@@ -1,0 +1,50 @@
+# TODO review these things 
+[project]
+name = "fanella"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "aiohttp>=3.11.16",
+    "pydantic>=2.11.3",
+    "uvloop>=0.21.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "ruff>=0.11.6",
+    "taskipy>=1.14.1",
+]
+
+[tool.taskipy.tasks]
+lint = "ruff format .  && ruff check . --fix && mypy --strict . && pytest"
+
+[tool.uv]
+package = true
+default-groups = ['dev']
+
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["COM812"]
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes="single"
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
