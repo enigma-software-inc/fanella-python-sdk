@@ -10,6 +10,7 @@ import dataclasses
 import functools
 import logging
 import typing
+import mimetypes
 
 import aiofiles
 import aiohttp
@@ -143,7 +144,7 @@ class Resource:
     uuid: pydantic.UUID4 = dataclasses.field(init=False)
     created_at: datetime.datetime = dataclasses.field(init=False)
 
-    _client: Client = dataclasses.field(kw_only=True, repr=False)
+    #  _client: Client = dataclasses.field(kw_only=True, repr=False)
 
 
 @dataclasses.dataclass
@@ -206,7 +207,7 @@ class Client:
     def __post_init__(self) -> None:
         """Auth & prepare Fanella resources."""
         loop.run_until_complete(self._auth())
-        self.Source = functools.partial(Source, _client=self)
+        #  self.Source = functools.partial(Source, _client=self)
         Request.token_defn = self._auth
 
     async def _auth(self) -> str:
@@ -242,6 +243,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     link: str | None = None
     source_id: int | None = dataclasses.field(default=None, repr=False)
     text: str | None = dataclasses.field(default=None, repr=False)
+    # get from dir
     file_path: str | None = dataclasses.field(default=None, repr=False)
     file_bytes: bytes | None = dataclasses.field(default=None, repr=False)
     file: io.TextIOWrapper | None = dataclasses.field(default=None, repr=False)
@@ -284,7 +286,14 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         # check kda l aiohttp FormData law it can help in a better way??
 
         if self.file_bytes:
-            data.add_field('file', self.file_bytes)
+            data.add_field(
+                'file',
+                self.file_bytes,
+                filename=self.name,
+                content_type=mimetypes.types_map[
+                    '.' + self.name.rsplit('.', 1)[-1]
+                ],
+            )
 
         self.__dict__.update(
             loop.run_until_complete(self._request.post(form=data)),
@@ -295,16 +304,37 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             return f.name, await f.read()
 
 
-@dataclasses.dataclass
-class Section(OwnerMixin, Resource):
-    """A section is usually part of a source."""
-
-
 if __name__ == '__main__':
     log.setLevel(level=logging.INFO)
+
     client = Client()
-    source = client.Source(
-        name='MySource',
-        file_path='/Users/gaytomycode/Downloads/temp.pdf',
-    )
+    source = Source(file_path='/Users/gaytomycode/Downloads/IEC 61851-1.pdf')
+    #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')
     log.info(source)
+
+    #  search_task = Search(
+    #      'Control Pilot state transition 1->2; Sequence 1.1 as specified in [GB/T 18487.1]'
+    #  )
+    #  run = await search_task.on(source)
+    #  results = await run.text()
+    #  print(results)
+
+    #  client = fanella.Client()
+    #
+    #  source = fanella.Source(file_path='file')
+    #
+    #  search_task = fanella.Search('your query')
+    #  search_run = await search_task.on(source)
+    #  results = await search_run.text()
+    #
+    #  gen_task = client.Generate('video script')
+    #  search_and_gen_pipeline = search_task | gen_task
+    #  search_and_gen_run = search_and_gen_pipeline.on(source)
+    #  video = await search_and_gen_run.video()
+    #
+    #
+    #  transform_task = client.transform({'something': str, 'another_thing': int})
+    #  search_and_transform_pipeline = search_task | transform_task
+    #  run = await search_and_transform_pipeline.start(source)
+    #  results = await run.text
+    #  print(results)  # ['snthsnth', 'snthsnthsnth']
