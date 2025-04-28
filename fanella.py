@@ -9,11 +9,16 @@ import asyncio
 import dataclasses
 import functools
 import logging
+import sys
 import typing
 
 import aiofiles
 import aiohttp
-import uvloop
+
+try:
+    import uvloop
+except ImportError:
+    import winloop
 
 if typing.TYPE_CHECKING:
     import datetime
@@ -36,12 +41,18 @@ log = logging.getLogger(__name__)
 
 
 # DONT DO KDA KOL MARA U NEED HAGA GET L LOOP TANI
-try:
-    loop = asyncio.get_running_loop()
-except RuntimeError:
-    uvloop.install()
-    loop = uvloop.new_event_loop()
-    asyncio.set_event_loop(loop)
+if sys.platform in ('win32'):
+        asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+else:
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        uvloop.install()
+        loop = uvloop.new_event_loop()
+        asyncio.set_event_loop(loop)
+
 
 
 @dataclasses.dataclass
