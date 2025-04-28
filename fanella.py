@@ -9,6 +9,7 @@ import asyncio
 import dataclasses
 import functools
 import logging
+import resource
 import typing
 import mimetypes
 
@@ -49,7 +50,7 @@ except RuntimeError:
 class Request[responseType]:
     """Make a request to Fanella."""
 
-    _path: str
+    _resource: str
     _auth: bool = dataclasses.field(default=True, kw_only=True)
     token_defn: typing.Callable[[Client], typing.Awaitable[str]] = (
         dataclasses.field(
@@ -96,7 +97,7 @@ class Request[responseType]:
         """Add data."""
         return await self._send(
             'post',
-            BASE_URL + self._path,
+            BASE_URL + self._resource,
             data=form,
             json=json,
         )
@@ -110,29 +111,29 @@ class Request[responseType]:
         """Change data."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}/',
+            BASE_URL + f'{self._resource}/{id_}/',
             json=json,
         )
 
     async def get_all(self, *, page: int = 1, rows: int = 10) -> responseType:
         """Get all your data."""
         return await self._send(
-            'post',
-            BASE_URL + f'{self._path}/me?page={page}&rows={rows}',
+            'get',
+            BASE_URL + f'{self._resource}/me?page={page}&rows={rows}',
         )
 
     async def get(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}',
+            BASE_URL + f'{self._resource}/{id_}',
         )
 
     async def delete(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}',
+            BASE_URL + f'{self._resource}/{id_}',
         )
 
 
@@ -146,6 +147,19 @@ class Resource:
 
     #  _client: Client = dataclasses.field(kw_only=True, repr=False)
 
+    @classmethod
+    def from_(cls, data: dict) -> 'Resource':
+        self = cls.__new__(cls)
+        for key, value in data.items():
+            setattr(self, key, value)
+        return self
+
+    @classmethod
+    async def all(cls) -> list[Source]:
+        print(dir(cls))
+        print(cls)
+        data = await cls._request.get_all() #== here exists error an "_request"
+        return map(cls.from_, data)
 
 @dataclasses.dataclass
 class OwnerMixin:
@@ -257,7 +271,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     )
 
     def __post_init__(self) -> None:
-        """Set request manager and upload source."""
+        """Set equest manager and upload source."""
         data = aiohttp.FormData()
 
         if not (
@@ -304,13 +318,16 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             return f.name, await f.read()
 
 
+
+
+
 if __name__ == '__main__':
     log.setLevel(level=logging.INFO)
 
     client = Client()
-    source = Source(file_path='/Users/gaytomycode/Downloads/IEC 61851-1.pdf')
-    #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')
-    log.info(source)
+    # source = Source(file_path='/home/dell/Documents/oberheim-temp-file.pdf')
+    #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')``
+    log.info(asyncio.run(Source.all()))
 
     #  search_task = Search(
     #      'Control Pilot state transition 1->2; Sequence 1.1 as specified in [GB/T 18487.1]'
