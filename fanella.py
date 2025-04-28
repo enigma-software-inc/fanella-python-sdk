@@ -10,7 +10,9 @@ import dataclasses
 import functools
 import logging
 import sys
+import resource
 import typing
+import mimetypes
 
 import aiofiles
 import aiohttp
@@ -59,7 +61,7 @@ else:
 class Request[responseType]:
     """Make a request to Fanella."""
 
-    _path: str
+    _resource: str
     _auth: bool = dataclasses.field(default=True, kw_only=True)
     token_defn: typing.Callable[[Client], typing.Awaitable[str]] = (
         dataclasses.field(
@@ -106,7 +108,7 @@ class Request[responseType]:
         """Add data."""
         return await self._send(
             'post',
-            BASE_URL + self._path,
+            BASE_URL + self._resource,
             data=form,
             json=json,
         )
@@ -120,29 +122,29 @@ class Request[responseType]:
         """Change data."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}/',
+            BASE_URL + f'{self._resource}/{id_}/',
             json=json,
         )
 
     async def get_all(self, *, page: int = 1, rows: int = 10) -> responseType:
         """Get all your data."""
         return await self._send(
-            'post',
-            BASE_URL + f'{self._path}/me?page={page}&rows={rows}',
+            'get',
+            BASE_URL + f'{self._resource}/me?page={page}&rows={rows}',
         )
 
     async def get(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}',
+            BASE_URL + f'{self._resource}/{id_}',
         )
 
     async def delete(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
             'post',
-            BASE_URL + f'{self._path}/{id_}',
+            BASE_URL + f'{self._resource}/{id_}',
         )
 
 
@@ -154,8 +156,21 @@ class Resource:
     uuid: pydantic.UUID4 = dataclasses.field(init=False)
     created_at: datetime.datetime = dataclasses.field(init=False)
 
-    _client: Client = dataclasses.field(kw_only=True, repr=False)
+    #  _client: Client = dataclasses.field(kw_only=True, repr=False)
 
+    @classmethod
+    def from_(cls, data: dict) -> 'Resource':
+        self = cls.__new__(cls)
+        for key, value in data.items():
+            setattr(self, key, value)
+        return self
+
+    @classmethod
+    async def all(cls) -> list[Source]:
+        print(dir(cls))
+        print(cls)
+        data = await cls._request.get_all() #== here exists error an "_request"
+        return map(cls.from_, data)
 
 @dataclasses.dataclass
 class OwnerMixin:
@@ -217,7 +232,7 @@ class Client:
     def __post_init__(self) -> None:
         """Auth & prepare Fanella resources."""
         loop.run_until_complete(self._auth())
-        self.Source = functools.partial(Source, _client=self)
+        #  self.Source = functools.partial(Source, _client=self)
         Request.token_defn = self._auth
 
     async def _auth(self) -> str:
@@ -253,6 +268,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     link: str | None = None
     source_id: int | None = dataclasses.field(default=None, repr=False)
     text: str | None = dataclasses.field(default=None, repr=False)
+    # get from dir
     file_path: str | None = dataclasses.field(default=None, repr=False)
     file_bytes: bytes | None = dataclasses.field(default=None, repr=False)
     file: io.TextIOWrapper | None = dataclasses.field(default=None, repr=False)
@@ -266,7 +282,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     )
 
     def __post_init__(self) -> None:
-        """Set request manager and upload source."""
+        """Set equest manager and upload source."""
         data = aiohttp.FormData()
 
         if not (
@@ -295,7 +311,14 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         # check kda l aiohttp FormData law it can help in a better way??
 
         if self.file_bytes:
-            data.add_field('file', self.file_bytes)
+            data.add_field(
+                'file',
+                self.file_bytes,
+                filename=self.name,
+                content_type=mimetypes.types_map[
+                    '.' + self.name.rsplit('.', 1)[-1]
+                ],
+            )
 
         self.__dict__.update(
             loop.run_until_complete(self._request.post(form=data)),
@@ -306,16 +329,40 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             return f.name, await f.read()
 
 
-@dataclasses.dataclass
-class Section(OwnerMixin, Resource):
-    """A section is usually part of a source."""
+
 
 
 if __name__ == '__main__':
     log.setLevel(level=logging.INFO)
+
     client = Client()
-    source = client.Source(
-        name='MySource',
-        file_path='/Users/gaytomycode/Downloads/temp.pdf',
-    )
-    log.info(source)
+    # source = Source(file_path='/home/dell/Documents/oberheim-temp-file.pdf')
+    #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')``
+    log.info(asyncio.run(Source.all()))
+
+    #  search_task = Search(
+    #      'Control Pilot state transition 1->2; Sequence 1.1 as specified in [GB/T 18487.1]'
+    #  )
+    #  run = await search_task.on(source)
+    #  results = await run.text()
+    #  print(results)
+
+    #  client = fanella.Client()
+    #
+    #  source = fanella.Source(file_path='file')
+    #
+    #  search_task = fanella.Search('your query')
+    #  search_run = await search_task.on(source)
+    #  results = await search_run.text()
+    #
+    #  gen_task = client.Generate('video script')
+    #  search_and_gen_pipeline = search_task | gen_task
+    #  search_and_gen_run = search_and_gen_pipeline.on(source)
+    #  video = await search_and_gen_run.video()
+    #
+    #
+    #  transform_task = client.transform({'something': str, 'another_thing': int})
+    #  search_and_transform_pipeline = search_task | transform_task
+    #  run = await search_and_transform_pipeline.start(source)
+    #  results = await run.text
+    #  print(results)  # ['snthsnth', 'snthsnthsnth']
