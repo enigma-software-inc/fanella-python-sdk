@@ -290,7 +290,9 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             )
             self.name = self.name or file_name
         elif self.file:
-            ...
+            self.file.seek(0)
+            self.file_bytes = self._read_file(self.file)
+            self.name = self.name or self.file.name
         elif self.link:
             data.add_field('link', self.link)
         elif self.text:
