@@ -9,10 +9,9 @@ import asyncio
 import dataclasses
 import functools
 import logging
-import sys
-import resource
-import typing
 import mimetypes
+import sys
+import typing
 
 import aiofiles
 import aiohttp
@@ -44,9 +43,9 @@ log = logging.getLogger(__name__)
 
 # DONT DO KDA KOL MARA U NEED HAGA GET L LOOP TANI
 if sys.platform in ('win32'):
-        asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 else:
     try:
         loop = asyncio.get_running_loop()
@@ -54,7 +53,6 @@ else:
         uvloop.install()
         loop = uvloop.new_event_loop()
         asyncio.set_event_loop(loop)
-
 
 
 @dataclasses.dataclass
@@ -159,18 +157,25 @@ class Resource:
     #  _client: Client = dataclasses.field(kw_only=True, repr=False)
 
     @classmethod
-    def from_(cls, data: dict) -> 'Resource':
+    def from_(cls, data: dict) -> Resource:
         self = cls.__new__(cls)
         for key, value in data.items():
             setattr(self, key, value)
         return self
 
     @classmethod
+    def initialize_request(cls):
+        cls._request = Request[cls](cls.api_resource_path)
+
+    @classmethod
     async def all(cls) -> list[Source]:
         print(dir(cls))
         print(cls)
-        data = await cls._request.get_all() #== here exists error an "_request"
+        if not hasattr(cls, '_request'):
+            cls.initialize_request()  # Ensure _request is initialized
+        data = await cls._request.get_all()
         return map(cls.from_, data)
+
 
 @dataclasses.dataclass
 class OwnerMixin:
@@ -268,7 +273,8 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     link: str | None = None
     source_id: int | None = dataclasses.field(default=None, repr=False)
     text: str | None = dataclasses.field(default=None, repr=False)
-    # get from dir
+    # get from dirh
+    api_resource_path = '/sources'
     file_path: str | None = dataclasses.field(default=None, repr=False)
     file_bytes: bytes | None = dataclasses.field(default=None, repr=False)
     file: io.TextIOWrapper | None = dataclasses.field(default=None, repr=False)
@@ -276,7 +282,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     version: int = dataclasses.field(init=False)
     size_bytes: int = dataclasses.field(init=False)
     _request: Request = dataclasses.field(
-        default_factory=lambda: Request['Source']('/sources/'),
+        # default_factory=lambda: Request['Source']('/sources/'),
         init=False,
         repr=False,
     )
@@ -327,9 +333,6 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     async def _read_file(self, file_path: str) -> tuple[str, bytes]:
         async with aiofiles.open(file_path, 'rb') as f:
             return f.name, await f.read()
-
-
-
 
 
 if __name__ == '__main__':
