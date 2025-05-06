@@ -23,13 +23,13 @@ if typing.TYPE_CHECKING:
 
     import pydantic
 
-_fanella_bad = RuntimeError('Error from our side sorry we will fix it')
+_fanella_bad = RuntimeError("Error from our side sorry we will fix it")
 _coder_bad = RuntimeError(
-    'Error from your side fix it chat support on https://fanella.ai. Error: %s'
+    "Error from your side fix it chat support on https://fanella.ai. Error: %s"
 )
 
 # https://api.fanella.ai/v1
-BASE_URL = 'http://localhost:8000/v1'
+BASE_URL = "http://localhost:8000/v1"
 
 logging.basicConfig(
     format='%(asctime)s [%(levelname)s] %(name)s "%(message)s"',
@@ -52,11 +52,9 @@ class Request[responseType]:
 
     _resource: str
     _auth: bool = dataclasses.field(default=True, kw_only=True)
-    token_defn: typing.Callable[[Client], typing.Awaitable[str]] = (
-        dataclasses.field(
-            init=False,
-            repr=False,
-        )
+    token_defn: typing.Callable[[Client], typing.Awaitable[str]] = dataclasses.field(
+        init=False,
+        repr=False,
     )
 
     async def _send(
@@ -72,9 +70,11 @@ class Request[responseType]:
                 path,
                 json=json,
                 data=data,
-                headers={'Authorization': f'Bearer {await self.token_defn()}'}
-                if self._auth
-                else {},
+                headers=(
+                    {"Authorization": f"Bearer {await self.token_defn()}"}
+                    if self._auth
+                    else {}
+                ),
             ) as response,
         ):
             server_error = 5
@@ -96,7 +96,7 @@ class Request[responseType]:
     ) -> responseType:
         """Add data."""
         return await self._send(
-            'post',
+            "post",
             BASE_URL + self._resource,
             data=form,
             json=json,
@@ -110,30 +110,30 @@ class Request[responseType]:
     ) -> responseType:
         """Change data."""
         return await self._send(
-            'post',
-            BASE_URL + f'{self._resource}/{id_}/',
+            "post",
+            BASE_URL + f"{self._resource}/{id_}/",
             json=json,
         )
 
     async def get_all(self, *, page: int = 1, rows: int = 10) -> responseType:
         """Get all your data."""
         return await self._send(
-            'get',
-            BASE_URL + f'{self._resource}/me?page={page}&rows={rows}',
+            "get",
+            BASE_URL + f"{self._resource}/me?page={page}&rows={rows}",
         )
 
     async def get(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
-            'post',
-            BASE_URL + f'{self._resource}/{id_}',
+            "post",
+            BASE_URL + f"{self._resource}/{id_}",
         )
 
     async def delete(self, id_: int) -> responseType:
         """Get data by id."""
         return await self._send(
-            'post',
-            BASE_URL + f'{self._resource}/{id_}',
+            "post",
+            BASE_URL + f"{self._resource}/{id_}",
         )
 
 
@@ -148,7 +148,7 @@ class Resource:
     #  _client: Client = dataclasses.field(kw_only=True, repr=False)
 
     @classmethod
-    def from_(cls, data: dict) -> 'Resource':
+    def from_(cls, data: dict) -> "Resource":
         self = cls.__new__(cls)
         for key, value in data.items():
             setattr(self, key, value)
@@ -158,8 +158,9 @@ class Resource:
     async def all(cls) -> list[Source]:
         print(dir(cls))
         print(cls)
-        data = await cls._request.get_all() #== here exists error an "_request"
+        data = await cls._request.get_all()  # == here exists error an "_request"
         return map(cls.from_, data)
+
 
 @dataclasses.dataclass
 class OwnerMixin:
@@ -199,15 +200,15 @@ class Client:
     >>> fanella.Client() # guest
     """
 
-    client_id: str = ''
-    client_secret: str = dataclasses.field(default='', repr=False)
+    client_id: str = ""
+    client_secret: str = dataclasses.field(default="", repr=False)
     _request: Request = dataclasses.field(
         default_factory=lambda: Request[
             typing.TypedDict(
-                'Auth',
-                {'access_token': str, 'refresh_token': str},
+                "Auth",
+                {"access_token": str, "refresh_token": str},
             )
-        ]('/auth/token/', _auth=False),
+        ]("/auth/token/", _auth=False),
         init=False,
         repr=False,
     )
@@ -215,8 +216,8 @@ class Client:
         init=False,
         repr=False,
     )
-    _access_token: str = dataclasses.field(default='', init=False, repr=False)
-    _refresh_token: str = dataclasses.field(default='', init=False, repr=False)
+    _access_token: str = dataclasses.field(default="", init=False, repr=False)
+    _refresh_token: str = dataclasses.field(default="", init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Auth & prepare Fanella resources."""
@@ -232,14 +233,14 @@ class Client:
         """
         if not self._access_token:
             data = aiohttp.FormData()
-            grant_type = 'client_credentials'
+            grant_type = "client_credentials"
             if not all((self.client_id, self.client_id)):
-                grant_type = 'guest'
-                log.warning('GUEST')
+                grant_type = "guest"
+                log.warning("GUEST")
 
-            data.add_field('grant_type', grant_type)
-            data.add_field('client_id', self.client_id)
-            data.add_field('client_secret', self.client_secret)
+            data.add_field("grant_type", grant_type)
+            data.add_field("client_id", self.client_id)
+            data.add_field("client_secret", self.client_secret)
             self._access_token, self._refresh_token = (
                 await self._request.post(form=data)
             ).values()
@@ -253,7 +254,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     Either pass a link, text, path, bytes or io obj.
     """
 
-    name: str = ''
+    name: str = ""
     link: str | None = None
     source_id: int | None = dataclasses.field(default=None, repr=False)
     text: str | None = dataclasses.field(default=None, repr=False)
@@ -265,7 +266,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     version: int = dataclasses.field(init=False)
     size_bytes: int = dataclasses.field(init=False)
     _request: Request = dataclasses.field(
-        default_factory=lambda: Request['Source']('/sources/'),
+        default_factory=lambda: Request["Source"]("/sources/"),
         init=False,
         repr=False,
     )
@@ -281,7 +282,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             ^ bool(self.file_path)
             ^ bool(self.file_bytes)
         ):
-            log.exception('You need one of these')
+            log.exception("You need one of these")
             raise RuntimeError
 
         if self.file_path:
@@ -290,25 +291,25 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
             )
             self.name = self.name or file_name
         elif self.file:
-            self.file.seek(0)
-            self.file_bytes = self._read_file(self.file)
-            self.name = self.name or self.file.name
+            data.add_field(
+                "file",
+                self.file,
+                io.BytesIO(self.file_bytes)
+            )
         elif self.link:
-            data.add_field('link', self.link)
+            data.add_field("link", self.link)
         elif self.text:
-            data.add_field('text', self.text)
+            data.add_field("text", self.text)
 
-        data.add_field('name', self.name)
+        data.add_field("name", self.name)
         # check kda l aiohttp FormData law it can help in a better way??
 
         if self.file_bytes:
             data.add_field(
-                'file',
+                "file",
                 self.file_bytes,
                 filename=self.name,
-                content_type=mimetypes.types_map[
-                    '.' + self.name.rsplit('.', 1)[-1]
-                ],
+                content_type=mimetypes.types_map["." + self.name.rsplit(".", 1)[-1]],
             )
 
         self.__dict__.update(
@@ -316,14 +317,11 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         )
 
     async def _read_file(self, file_path: str) -> tuple[str, bytes]:
-        async with aiofiles.open(file_path, 'rb') as f:
+        async with aiofiles.open(file_path, "rb") as f:
             return f.name, await f.read()
 
 
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     log.setLevel(level=logging.INFO)
 
     client = Client()
