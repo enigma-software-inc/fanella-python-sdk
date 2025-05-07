@@ -168,11 +168,15 @@ class Resource:
         cls._request = Request[cls](cls.api_resource_path)
 
     @classmethod
-    async def all(cls) -> list[Source]:
+    def all(cls,page: int = 1, rows: int = 10) -> list[Source]:
         if not hasattr(cls, '_request'):
             cls.initialize_request()  # Ensure _request is initialized
-        data = await cls._request.get_all()
-        return map(cls.from_, data)
+        while True:
+            data = loop.run_until_complete( cls._request.get_all(page=page, rows=rows))
+            if not data:
+                return 
+            yield [cls.from_(d) for d in data]
+            page+=1
 
 
 @dataclasses.dataclass
@@ -331,6 +335,14 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         async with aiofiles.open(file_path, "rb") as f:
             return f.name, await f.read()
 
+# def test_collect_all_items() -> List[Source]:
+#     var = Source.all(page=1,rows=2)
+#     items = list()
+
+#     for item in var:
+#         items+=item
+#     return items
+
 
 if __name__ == '__main__':
     log.setLevel(level=logging.INFO)
@@ -338,7 +350,8 @@ if __name__ == '__main__':
     client = Client()
     # source = Source(file_path='/home/dell/Documents/oberheim-temp-file.pdf')
     #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')``
-    log.info(asyncio.run(Source.all()))
+    # log.info(len(test_collect_all_items()))
+    
 
     #  search_task = Search(
     #      'Control Pilot state transition 1->2; Sequence 1.1 as specified in [GB/T 18487.1]'
