@@ -126,10 +126,10 @@ class Request[responseType]:
 
     async def get_all(self, *, page: int = 1, rows: int = 10) -> responseType:
         """Get all your data."""
-        return await self._send(
+        return (await self._send(
             "get",
             BASE_URL + f"{self._resource}/me?page={page}&rows={rows}",
-        )
+        ))['data']
 
     async def get(self, id_: int) -> responseType:
         """Get data by id."""
@@ -168,7 +168,7 @@ class Resource:
         cls._request = Request[cls](cls.api_resource_path)
 
     @classmethod
-    def all(cls,page: int = 1, rows: int = 10) -> list[Source]:
+    def all(cls,page: int = 1, rows: int = 10):
         if not hasattr(cls, '_request'):
             cls.initialize_request()  # Ensure _request is initialized
         while True:
@@ -335,7 +335,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         async with aiofiles.open(file_path, "rb") as f:
             return f.name, await f.read()
 
-# def test_collect_all_items() -> List[Source]:
+# def test_collect_all_items() -> list[Source]:
 #     var = Source.all(page=1,rows=2)
 #     items = list()
 
