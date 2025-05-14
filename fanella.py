@@ -128,7 +128,7 @@ class Request[responseType]:
         """Get all your data."""
         return await self._send(
             "get",
-            BASE_URL + f"{self._resource}/me?page={page}&rows={rows}",
+            BASE_URL + f"{self._resource}me?page={page}&rows={rows}",
         )
 
     async def get(self, id_: int) -> responseType:
@@ -272,7 +272,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     source_id: int | None = dataclasses.field(default=None, repr=False)
     text: str | None = dataclasses.field(default=None, repr=False)
     # get from dirh
-    api_resource_path = '/sources'
+    api_resource_path = '/sources/'
     file_path: str | None = dataclasses.field(default=None, repr=False)
     file_bytes: bytes | None = dataclasses.field(default=None, repr=False)
     file: io.TextIOWrapper | None = dataclasses.field(default=None, repr=False)
@@ -281,7 +281,7 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
     size_bytes: int = dataclasses.field(init=False)
     _request: Request = dataclasses.field(
 
-        # default_factory=lambda: Request['Source']('/sources/'),
+        default_factory=lambda: Request['Source']('/sources/'),
         init=False,
         repr=False,
     )
@@ -337,7 +337,9 @@ if __name__ == '__main__':
 
     client = Client()
     # source = Source(file_path='/home/dell/Documents/oberheim-temp-file.pdf')
-    #  source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')``
+    # source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')
+    # source = Source(file_path='/home/berlnty/Downloads/BMW_WBS_OCPP 2.0.1 Use Case requirements.pdf')
+    # source = Source(file_path='/home/berlnty/Downloads/GBT 18487.1-2023 English Version.pdf')
     log.info(asyncio.run(Source.all()))
 
     #  search_task = Search(
