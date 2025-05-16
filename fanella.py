@@ -126,10 +126,10 @@ class Request[responseType]:
 
     async def get_all(self, *, page: int = 1, rows: int = 10) -> responseType:
         """Get all your data."""
-        return await self._send(
+        return (await self._send(
             "get",
             BASE_URL + f"{self._resource}me?page={page}&rows={rows}",
-        )
+        ))['data']
 
     async def get(self, id_: int) -> responseType:
         """Get data by id."""
@@ -168,11 +168,15 @@ class Resource:
         cls._request = Request[cls](cls.api_resource_path)
 
     @classmethod
-    async def all(cls) -> list[Source]:
+    def all(cls,page: int = 1, rows: int = 10):
         if not hasattr(cls, '_request'):
             cls.initialize_request()  # Ensure _request is initialized
-        data = await cls._request.get_all()
-        return map(cls.from_, data)
+        while True:
+            data = loop.run_until_complete( cls._request.get_all(page=page, rows=rows))
+            if not data:
+                return 
+            yield [cls.from_(d) for d in data]
+            page+=1
 
 
 @dataclasses.dataclass
@@ -331,6 +335,14 @@ class Source(OwnerMixin, BackgroundTaskMixin, ArchiveMixin, Resource):
         async with aiofiles.open(file_path, "rb") as f:
             return f.name, await f.read()
 
+# def test_collect_all_items() -> list[Source]:
+#     var = Source.all(page=1,rows=2)
+#     items = list()
+
+#     for item in var:
+#         items+=item
+#     return items
+
 
 if __name__ == '__main__':
     log.setLevel(level=logging.INFO)
@@ -340,6 +352,7 @@ if __name__ == '__main__':
     # source = Source(file_path='/Users/gaytomycode/Downloads/GBT 18487.1-2023 English Version.pdf')
     # source = Source(file_path='/home/berlnty/Downloads/BMW_WBS_OCPP 2.0.1 Use Case requirements.pdf')
     # source = Source(file_path='/home/berlnty/Downloads/GBT 18487.1-2023 English Version.pdf')
+    # log.info(len(test_collect_all_items()))
     log.info(asyncio.run(Source.all()))
 
     #  search_task = Search(
